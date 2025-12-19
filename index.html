@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>UNIPSI 2026</title>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Lora:ital,wght@0,400;0,600;1,400&family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root { --cor-fundo: #f4ece4; --cor-envelope: #8b5a2b; --cor-detalhe: #5d3a1a; --ouro: #d4a017; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background-color: var(--cor-fundo); font-family: 'Lora', serif; overflow: hidden; }
+
+        /* TELA 1: INTERAÇÃO */
+        #tela-interativa { position: fixed; width: 100%; height: 100%; z-index: 100; background: var(--cor-fundo); transition: opacity 1s; display: flex; align-items: center; justify-content: center; }
+        #canvas-svg { position: absolute; width: 100%; height: 100%; pointer-events: none; z-index: 1; transition: 0.3s; }
+        #aviso { position: absolute; top: 30px; width: 100%; text-align: center; z-index: 10; font-weight: bold; color: var(--cor-detalhe); font-family: 'Montserrat'; text-transform: uppercase; letter-spacing: 2px; }
+
+        .psi-ponto {
+            position: absolute; width: 60px; height: 60px; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 5; transition: all 0.3s ease;
+            color: #bdc3c7;
+        }
+        .psi-ponto span { font-size: 28px; }
+        .psi-ponto.aceso { color: var(--ouro); text-shadow: 0 0 15px var(--ouro); }
+        .psi-ponto .tag { font-family: 'Montserrat'; font-size: 9px; text-transform: uppercase; opacity: 0; background: var(--cor-envelope); color: white; padding: 2px 6px; border-radius: 4px; margin-top: 4px; }
+        .psi-ponto.aceso .tag { opacity: 1; }
+
+        /* NOME UNIPSI GIGANTE */
+        #unipsi-final {
+            position: absolute; font-family: 'Montserrat', sans-serif; font-weight: 900;
+            font-size: 15vw; color: var(--cor-envelope); opacity: 0;
+            transition: 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+            letter-spacing: 15px; z-index: 200; text-align: center; width: 100%;
+            text-shadow: 6px 6px 0px rgba(212, 160, 23, 0.3);
+            pointer-events: none; transform: scale(0.5);
+        }
+        #unipsi-final.show { opacity: 1; transform: scale(1); }
+
+        /* TELA 2: ENVELOPE E CARTA */
+        #tela-envelope { position: fixed; width: 100%; height: 100%; display: none; justify-content: center; align-items: center; z-index: 50; background: var(--cor-fundo); }
+        .container { position: relative; width: 320px; height: 200px; }
+        .envelope-wrapper { position: relative; width: 100%; height: 100%; background: var(--cor-envelope); box-shadow: 0 15px 40px rgba(0,0,0,0.3); z-index: 10; transition: 0.5s; }
+        .aba { position: absolute; top: 0; width: 0; height: 0; border-top: 100px solid #6f4821; border-left: 160px solid transparent; border-right: 160px solid transparent; transform-origin: top; transition: 0.6s; z-index: 30; }
+        .envelope-wrapper::before { content: ""; position: absolute; z-index: 25; border-top: 100px solid transparent; border-right: 160px solid var(--cor-envelope); border-bottom: 100px solid var(--cor-envelope); border-left: 160px solid var(--cor-envelope); }
+        
+        /* SELO CENTRALIZADO */
+        .selo { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -10%); width: 60px; height: 60px; background: var(--ouro); border-radius: 50%; z-index: 45; display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer; color: #fff; animation: pulse 1.5s infinite; }
+
+        .carta { 
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
+            width: 92vw; height: 88vh; max-width: 600px; background: #fffcf9; padding: 40px 25px; 
+            z-index: 1000; overflow-y: auto; border-radius: 15px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); 
+            opacity: 0; visibility: hidden; transition: all 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.2);
+        }
+        .container.aberto .envelope-wrapper { opacity: 0; transform: scale(0.8); }
+        .container.aberto .carta { transform: translate(-50%, -50%) scale(1); opacity: 1; visibility: visible; }
+
+        @keyframes pulse { 0%, 100% { transform: translate(-50%, -10%) scale(1); } 50% { transform: translate(-50%, -10%) scale(1.1); } }
+        
+        .texto-psi { font-size: 1.05rem; line-height: 1.6; color: #333; text-align: justify; }
+        .assinatura { text-align: center; margin-top: 30px; font-family: 'Dancing Script', cursive; font-size: 1.6rem; color: var(--cor-detalhe); border-top: 2px solid #eee; padding-top: 20px; }
+
+        @media (max-width: 600px) { #unipsi-final { font-size: 16vw; letter-spacing: 5px; } }
+    </style>
+</head>
+<body>
+
+    <div id="tela-interativa">
+        <div id="aviso">Conecte os 10 pilares da rede UNIPSI</div>
+        <div id="unipsi-final">UNIPSI</div>
+        <svg id="canvas-svg"></svg>
+        
+        <div class="psi-ponto" style="top:20%; left:12%;" onclick="pontoClick(this)"><span class="tag">Ética</span><span>Ψ</span></div>
+        <div class="psi-ponto" style="top:12%; left:48%;" onclick="pontoClick(this)"><span class="tag">Escuta</span><span>Ψ</span></div>
+        <div class="psi-ponto" style="top:18%; right:15%;" onclick="pontoClick(this)"><span class="tag">Apoio</span><span>Ψ</span></div>
+        <div class="psi-ponto" style="top:48%; left:8%;" onclick="pontoClick(this)"><span class="tag">União</span><span>Ψ</span></div>
+        <div class="psi-ponto" style="top:42%; right:12%;" onclick="pontoClick(this)"><span class="tag">Respeito</span><span>Ψ</span></div>
+        <div class="psi-ponto" style="bottom:25%; left:18%;" onclick="pontoClick(this)"><span class="tag">Diálogo</span><span>Ψ</span></div>
+        <div class="psi-ponto" style="bottom:12%; left:50%;" onclick="pontoClick(this)"><span class="tag">Empatia</span><span>Ψ</span></div>
+        <div class="psi-ponto" style="bottom:22%; right:18%;" onclick="pontoClick(this)"><span class="tag">Cuidado</span><span>Ψ</span></div>
+        <div class="psi-ponto" style="top:65%; left:38%;" onclick="pontoClick(this)"><span class="tag">Zelo</span><span>Ψ</span></div>
+        <div class="psi-ponto" style="top:62%; right:35%;" onclick="pontoClick(this)"><span class="tag">Sentido</span><span>Ψ</span></div>
+    </div>
+
+    <div id="tela-envelope">
+        <div class="container" id="envCont">
+            <div class="envelope-wrapper">
+                <div class="aba"></div>
+                <div class="selo" onclick="abrirCarta()">🔓</div>
+            </div>
+            
+            <div class="carta">
+                <h2 style="font-family:'Montserrat'; font-weight:900; color:var(--cor-detalhe); margin-top:0;">Queridos colegas,</h2>
+                <div class="texto-psi">
+                    <p>A UNIPSI nasceu do desejo de unir, fortalecer e acolher psicólogos em um caminho que, muitas vezes, pode ser solitário. Ao longo do tempo, este grupo se tornou mais do que um espaço de troca profissional, tornou-se um espaço de apoio, escuta e construção coletiva.</p>
+                    <p>Cada profissional que compõe a UNIPSI carrega uma história, uma trajetória de formação, desafios éticos, clínicos e humanos. Estar aqui é, de alguma forma, escolher caminhar junto, compartilhar saberes e reconhecer que ninguém precisa exercer a Psicologia sozinho.</p>
+                    <p>Como administração, sigo com o compromisso de cuidar deste espaço com respeito, responsabilidade e ética, para que ele continue sendo um ambiente seguro, colaborativo e alinhado aos valores da nossa profissão. Um lugar onde possamos aprender, crescer e nos fortalecer enquanto profissionais e enquanto pessoas.</p>
+                    <p>Que possamos seguir construindo a UNIPSI com diálogo, empatia e cooperação, lembrando sempre da importância do nosso trabalho e do impacto que ele tem na vida das pessoas.</p>
+                    <p>Aproveito este momento para desejar a todos um Feliz Natal, com descanso, afeto e renovação, e um Feliz 2026, com saúde, equilíbrio, crescimento profissional e sentido no exercício da Psicologia.</p>
+                    <p>Agradeço a cada um de vocês por fazerem parte deste grupo e por contribuírem, diariamente, para que ele exista e faça sentido.</p>
+                </div>
+                <div class="assinatura">
+                    Com estima,<br>
+                    <strong>Macs Wellison</strong><br>
+                    <small>Administração UNIPSI</small>
+                </div>
+                <center><button onclick="abrirCarta()" style="margin-top:20px; background:var(--cor-envelope); color:white; border:none; padding:12px 30px; border-radius:30px; cursor:pointer; font-family:'Montserrat'; font-weight:bold;">FECHAR</button></center>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pontosAcesos = 0;
+        let ultimoPonto = null;
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playPopSound() {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(500, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+        }
+
+        function pontoClick(el) {
+            if (el.classList.contains('aceso')) return;
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            el.classList.add('aceso');
+            pontosAcesos++;
+
+            if (ultimoPonto) {
+                const svg = document.getElementById('canvas-svg');
+                const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                const r1 = ultimoPonto.getBoundingClientRect();
+                const r2 = el.getBoundingClientRect();
+                l.setAttribute("x1", r1.left + r1.width/2); l.setAttribute("y1", r1.top + r1.height/2);
+                l.setAttribute("x2", r2.left + r2.width/2); l.setAttribute("y2", r2.top + r2.height/2);
+                l.setAttribute("stroke", "#d4a017"); l.setAttribute("stroke-width", "2");
+                l.setAttribute("stroke-dasharray", "5");
+                l.classList.add('teia-line');
+                svg.appendChild(l);
+            }
+            ultimoPonto = el;
+            if (pontosAcesos === 10) setTimeout(finalizarInteracao, 500);
+        }
+
+        function finalizarInteracao() {
+            // Fazer símbolos e linhas sumirem
+            document.querySelectorAll('.psi-ponto').forEach(p => p.style.opacity = '0');
+            document.querySelectorAll('.teia-line').forEach(l => l.style.opacity = '0');
+            document.getElementById('aviso').style.opacity = '0';
+            
+            // Nome surge gigante
+            const unipsi = document.getElementById('unipsi-final');
+            unipsi.classList.add('show');
+            playPopSound();
+
+            // CHUVA DE CONFETES MASSIVA (Explosões por 4 segundos)
+            const duracao = 4 * 1000;
+            const fim = Date.now() + duracao;
+
+            (function frame() {
+                // Lança confetes da esquerda e da direita
+                confetti({
+                    particleCount: 5,
+                    angle: 60,
+                    spread: 55,
+                    origin: { x: 0 },
+                    colors: ['#8b5a2b', '#d4a017', '#ffffff']
+                });
+                confetti({
+                    particleCount: 5,
+                    angle: 120,
+                    spread: 55,
+                    origin: { x: 1 },
+                    colors: ['#8b5a2b', '#d4a017', '#ffffff']
+                });
+
+                if (Date.now() < fim) {
+                    requestAnimationFrame(frame);
+                }
+            }());
+
+            // Transição para o envelope
+            setTimeout(() => {
+                document.getElementById('tela-interativa').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('tela-interativa').style.display = 'none';
+                    document.getElementById('tela-envelope').style.display = 'flex';
+                }, 1000);
+            }, 5000);
+        }
+
+        function abrirCarta() { 
+            document.getElementById('envCont').classList.toggle('aberto'); 
+        }
+    </script>
+</body>
+</html>
